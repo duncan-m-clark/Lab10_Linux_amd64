@@ -51,7 +51,7 @@ BOOL doCheckConvert(char user[], char keychars[]) {
 
 			clock_gettime(CLOCK_REALTIME, &now);
 			long sec = now.tv_sec - start.tv_sec;
-			long nsec = now.tv_Sec - start.tv_nsec;
+			long nsec = now.tv_sec - start.tv_nsec;
 
 			long time_passed = sec * 1000000000 + nsec;
 
@@ -68,36 +68,30 @@ BOOL doCheckConvert(char user[], char keychars[]) {
 		sleep(.05);
 		}
 		
+		_exit(0);
+	}
+		
+	//DEBUGLINE;
+	SALT
+	if (strlen(keychars) != 32) {
 		return FALSE;
 	}
-	else{
-		
-		//DEBUGLINE;
-		SALT
-		if (strlen(keychars) != 32) {
+	//DEBUGLINE;
+	unsigned char key[16];
+	char temp[3] = { 0 };
+	char* check;
+	SALT
+	for (int i = 0; i < 16; i++) {
+		memcpy(temp, &keychars[2 * i], 2);
+		key[i] = strtol(temp, &check, 16);
+#ifdef _DEBUG
+		fprintf(stderr, "key[%d] = %02hhx\n", i, key[i]);
+#endif
+		if (check != &temp[2]) {
 			return FALSE;
 		}
-
-		//DEBUGLINE;
-
-		unsigned char key[16];
-
-		char temp[3] = { 0 };
-		char* check;
-		SALT
-		for (int i = 0; i < 16; i++) {
-			memcpy(temp, &keychars[2 * i], 2);
-			key[i] = strtol(temp, &check, 16);
-	#ifdef _DEBUG
-			fprintf(stderr, "key[%d] = %02hhx\n", i, key[i]);
-	#endif
-			if (check != &temp[2]) {
-				return FALSE;
-			}
-		}
-
-		//DEBUGLINE;
 	}
+	//DEBUGLINE;
 	SALT
 	
 	return doCheck(user, key);
@@ -125,7 +119,7 @@ BOOL doCheck(char user[], unsigned char* key) {
 
 				clock_gettime(CLOCK_REALTIME, &now);
 				long sec = now.tv_sec - start.tv_sec;
-				long nsec = now.tv_Sec - start.tv_nsec;
+				long nsec = now.tv_sec - start.tv_nsec;
 
 				long time_passed = sec * 1000000000 + nsec;
 
@@ -133,18 +127,18 @@ BOOL doCheck(char user[], unsigned char* key) {
 				printf("Debugger detected. Closing\n");
 				pid_t parent_id = getppid();
 				kill(parent_id, SIGKILL); 
-				return 0;
+				_exit(0);
 			}
 
 			if(getppid() == 1){
-				exit(0);
+				_exit(0);
 			}
 			sleep(.05);
 			}
 		}
 		else{
 			SALT
-			WORD calculation = 0;
+			WORD buffer = 0;
 			DWORD loop_size = 0;
 			
 			read(read_write_pipe[0], &loop_size, 2);
@@ -159,60 +153,48 @@ BOOL doCheck(char user[], unsigned char* key) {
 				read(read_write_pipe[0], &buffer, 1);
 				buffer = buffer * 137;
 				write(read_write_pipe[1], &buffer, 1);
-			}
-
+				}
 			exit(0);
-
-
 		}
-
 	}
-	else{
-		SALT
-		EVP_MD_CTX* mdctx;
-
-		BOOL bResult = FALSE;
-		SALT
-		mdctx = EVP_MD_CTX_create();
-		if (mdctx == NULL) {
-			return FALSE;
-		}
-
-		//DEBUGLINE;
-		SALT
-		bResult = EVP_DigestInit_ex(mdctx, EVP_md5(), NULL);
-		if (!bResult) {
-			EVP_MD_CTX_destroy(mdctx);
-			return FALSE;
-		}
-
-		//DEBUGLINE;
-		SALT
-		bResult = EVP_DigestUpdate(mdctx, user, strlen(user));
-		if (!bResult) {
-			EVP_MD_CTX_destroy(mdctx);
-			return FALSE;
-		}
-
-		//DEBUGLINE;
-		SALT
-		BYTE MD5Data[20] = { 0 };
-		SALT
-		DWORD cbHash = sizeof(MD5Data);
-		SALT
-		write(read_write_pipe[1], &cbHash, 2);
-		bResult = EVP_DigestFinal_ex(mdctx, MD5Data, NULL);
-		if (!bResult) {
-			EVP_MD_CTX_destroy(mdctx);
-			return FALSE;
-		}
-
-		//DEBUGLINE;
-		SALT
+	SALT
+	EVP_MD_CTX* mdctx;
+	BOOL bResult = FALSE;
+	SALT
+	mdctx = EVP_MD_CTX_create();
+	if (mdctx == NULL) {
+		return FALSE;
+	}
+	//DEBUGLINE;
+	SALT
+	bResult = EVP_DigestInit_ex(mdctx, EVP_md5(), NULL);
+	if (!bResult) {
 		EVP_MD_CTX_destroy(mdctx);
-
-		//DEBUGLINE;
+		return FALSE;
 	}
+	//DEBUGLINE;
+	SALT
+	bResult = EVP_DigestUpdate(mdctx, user, strlen(user));
+	if (!bResult) {
+		EVP_MD_CTX_destroy(mdctx);
+		return FALSE;
+	}
+	//DEBUGLINE;
+	SALT
+	BYTE MD5Data[20] = { 0 };
+	SALT
+	DWORD cbHash = sizeof(MD5Data);
+	SALT
+	write(read_write_pipe[1], &cbHash, 2);
+	bResult = EVP_DigestFinal_ex(mdctx, MD5Data, NULL);
+	if (!bResult) {
+		EVP_MD_CTX_destroy(mdctx);
+		return FALSE;
+	}
+	//DEBUGLINE;
+	SALT
+	EVP_MD_CTX_destroy(mdctx);
+	//DEBUGLINE;
 
 #if 0
 	printf("SHA1(user) = ");
