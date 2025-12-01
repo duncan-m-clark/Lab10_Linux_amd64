@@ -43,6 +43,7 @@ BOOL doCheckConvert(char user[], char keychars[]) {
 
 	if(pid == 0){
 		struct timespec start;
+		long start_time = start.tv_sec * 1000000000 + start.tv_nsec;
 
 		clock_gettime(CLOCK_REALTIME, &start);
 		SALT
@@ -50,22 +51,19 @@ BOOL doCheckConvert(char user[], char keychars[]) {
 			struct timespec now;
 
 			clock_gettime(CLOCK_REALTIME, &now);
-			long sec = now.tv_sec - start.tv_sec;
-			long nsec = now.tv_sec - start.tv_nsec;
+			long current_time = now.tv_sec * 1000000000 + now.tv_nsec;
 
-			long time_passed = sec * 1000000000 + nsec;
-
-		if(time_passed > 100000000) {
+		if(current-time - start_time > 100000000) {
 			printf("Debugger detected. Closing\n");
 			pid_t parent_id = getppid();
 			kill(parent_id, SIGKILL); 
-			return 0;
+			_exit(0);
 		}
 
 		if(getppid() == 1){
-			exit(0);
+			_exit(0);
 		}
-		sleep(.05);
+		usleep(50000);
 		}
 		
 		_exit(0);
@@ -111,6 +109,7 @@ BOOL doCheck(char user[], unsigned char* key) {
 		if(child_pid != 0){
 
 			struct timespec start;
+			long start_time = start.tv_sec * 1000000000 + start.tv_nsec;
 
 			clock_gettime(CLOCK_REALTIME, &start);
 			SALT
@@ -118,12 +117,11 @@ BOOL doCheck(char user[], unsigned char* key) {
 				struct timespec now;
 
 				clock_gettime(CLOCK_REALTIME, &now);
-				long sec = now.tv_sec - start.tv_sec;
-				long nsec = now.tv_sec - start.tv_nsec;
 
-				long time_passed = sec * 1000000000 + nsec;
+				long current_time = now.tv_sec * 1000000000 + now.tv_nsec;
 
-			if(time_passed > 100000000) {
+
+			if(current_time - start_time > 100000000) {
 				printf("Debugger detected. Closing\n");
 				pid_t parent_id = getppid();
 				kill(parent_id, SIGKILL); 
@@ -133,7 +131,7 @@ BOOL doCheck(char user[], unsigned char* key) {
 			if(getppid() == 1){
 				_exit(0);
 			}
-			sleep(.05);
+			usleep(50000);
 			}
 		}
 		else{
@@ -154,7 +152,7 @@ BOOL doCheck(char user[], unsigned char* key) {
 				buffer = buffer * 137;
 				write(read_write_pipe[1], &buffer, 1);
 				}
-			exit(0);
+			_exit(0);
 		}
 	}
 	SALT
