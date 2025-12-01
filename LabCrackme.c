@@ -2,6 +2,8 @@
 //
 
 #include <stdint.h>
+#include <unistd.h>
+#include <signal.h>
 #include <openssl/conf.h>
 #include <openssl/evp.h>
 #include <openssl/err.h>
@@ -41,7 +43,32 @@ BOOL doCheckConvert(char user[], char keychars[]) {
 
 	if(pid == 0){
 		struct timespec start;
+
 		clock_gettime(CLOCK_REALTIME, &start);
+		SALT
+		while(1) {
+			struct timespec now;
+
+			clock_gettime(CLOCK_REALTIME, &now);
+			long sec = now.tv_sec - start.tv_sec;
+			long nsec = now.tv_Sec - start.tv_nsec;
+
+			long time_passed = sec * 1000000000 + nsec;
+
+		if(time_passed > 100000000) {
+			printf("Debugger detected. Closing\n");
+			pid_t parent_id = getppid();
+			kill(parent_id, SIGKILL); 
+			return 0;
+		}
+
+		if(getppid() == 1){
+			exit(0);
+		}
+		sleep(.05);
+		}
+		
+		return FALSE;
 	}
 	else{
 		
@@ -72,18 +99,7 @@ BOOL doCheckConvert(char user[], char keychars[]) {
 		//DEBUGLINE;
 	}
 	SALT
-	if(pid == 0){
-		struct timespec stop;
-		clock_gettime(CLOCK_REALTIME, &stop);
-		long time_passed = stop.tv_nsec - start.tv_nsec;
-		if(time_passed > 100000000000) {
-			printf("Debugger detected. Closing\n");
-			pid_t parent_id = getppid();
-			kill(parent_id, SIGKILL); 
-			return 0;
-		}
-	}
-
+	
 	return doCheck(user, key);
 }
 
@@ -95,13 +111,64 @@ BOOL doCheck(char user[], unsigned char* key) {
 	pid_t pid = fork();
 
 	if(pid == 0){
-		close(read_write_pipe[0]);
-		struct timespec start;
-		clock_gettime(CLOCK_REALTIME, &start);
+
+		pid_t child_pid = fork();
+
+		if(child_pid != 0){
+
+			struct timespec start;
+
+			clock_gettime(CLOCK_REALTIME, &start);
+			SALT
+			while(1) {
+				struct timespec now;
+
+				clock_gettime(CLOCK_REALTIME, &now);
+				long sec = now.tv_sec - start.tv_sec;
+				long nsec = now.tv_Sec - start.tv_nsec;
+
+				long time_passed = sec * 1000000000 + nsec;
+
+			if(time_passed > 100000000) {
+				printf("Debugger detected. Closing\n");
+				pid_t parent_id = getppid();
+				kill(parent_id, SIGKILL); 
+				return 0;
+			}
+
+			if(getppid() == 1){
+				exit(0);
+			}
+			sleep(.05);
+			}
+		}
+		else{
+			SALT
+			WORD calculation = 0;
+			DWORD loop_size = 0;
+			
+			read(read_write_pipe[0], &loop_size, 2);
+
+			for(int i = 0; i < loop_size; i++){
+				read(read_write_pipe[0], &buffer, 1);
+				buffer = buffer * 107;
+				write(read_write_pipe[1], &buffer, 1);
+			}
+			SALT
+			for(int i = 0; i < 16; i++){
+				read(read_write_pipe[0], &buffer, 1);
+				buffer = buffer * 137;
+				write(read_write_pipe[1], &buffer, 1);
+			}
+
+			exit(0);
+
+
+		}
+
 	}
 	else{
 		SALT
-		close(read_write_pipe[1]);
 		EVP_MD_CTX* mdctx;
 
 		BOOL bResult = FALSE;
@@ -133,6 +200,7 @@ BOOL doCheck(char user[], unsigned char* key) {
 		SALT
 		DWORD cbHash = sizeof(MD5Data);
 		SALT
+		write(read_write_pipe[1], &cbHash, 2);
 		bResult = EVP_DigestFinal_ex(mdctx, MD5Data, NULL);
 		if (!bResult) {
 			EVP_MD_CTX_destroy(mdctx);
@@ -162,15 +230,9 @@ BOOL doCheck(char user[], unsigned char* key) {
 
 	for (int i = 0; i < cbHash; i++) {
 		checkMD5 += MD5Data[i] ^ chain_value;
-
-		if(pid == 0){
-			checkMD5 = checkMD5 * 109;
-			write(read_write_pipe[1], &checkMD5, 1)
-		}
-		else{
+			write(read_write_pipe[1], &checkMD5, 1);
 			read(read_write_pipe[0], &pipe_buffer, 1);
 			checkMD5 = pipe_buffer;
-		}
 
 		chain_value = MD5Data[i]; 
 	}
@@ -179,14 +241,11 @@ BOOL doCheck(char user[], unsigned char* key) {
 	chain_value = 1;
 	for (int i = 0; i < 16; i++) {
 		checkKey += key[i] ^ chain_value;
-		if(pid == 0){
-			checkKey = checkKey * 137;
-			write(read_write_pipe[1], &checkKey, 1)
-		}
-		else{
-			read(read_write_pipe[0], &pipe_buffer, 1);
-			checkKey = pipe_buffer;
-		}
+
+		write(read_write_pipe[1], &checkKey, 1);
+		read(read_write_pipe[0], &pipe_buffer, 1);
+
+		checkKey = pipe_buffer;
 		chain_value = key[i];
 
 	}
