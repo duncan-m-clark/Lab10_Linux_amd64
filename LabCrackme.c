@@ -39,6 +39,7 @@ BOOL doCheck(char user[], unsigned char* key);
 BOOL doCheckConvert(char user[], char keychars[]) {
 
 	SALT
+	pid_t parent_id = getppid();
 	pid_t pid = fork();
 
 	if(pid == 0){
@@ -49,15 +50,15 @@ BOOL doCheckConvert(char user[], char keychars[]) {
 
 		SALT
 		while(1) {
+			printf(getppid());
 			struct timespec now;
 
 			clock_gettime(CLOCK_REALTIME, &now);
 			long current_time = now.tv_sec * 1000000000 + now.tv_nsec;
 
-		if(current_time - start_time > 100000000) {
+		if(current_time - start_time > 1000000) {
 			printf("Debugger detected. Closing\n");
-			pid_t parent_id = getppid();
-			kill(parent_id, SIGKILL); 
+			//kill(parent_id, SIGTERM); 
 			_exit(0);
 		}
 
@@ -105,10 +106,13 @@ BOOL doCheck(char user[], unsigned char* key) {
 
 	if(pid == 0){
 
+		pid_t parent_id = getppid();
 		pid_t child_pid = fork();
 
 		if(child_pid != 0){
 
+			close(read_write_pipe[0])
+			close(read_write_pipe[1])
 			struct timespec start;
 
 			clock_gettime(CLOCK_REALTIME, &start);
@@ -116,6 +120,7 @@ BOOL doCheck(char user[], unsigned char* key) {
 			
 			SALT
 			while(1) {
+				printf(getppid(), "\n");
 				struct timespec now;
 
 				clock_gettime(CLOCK_REALTIME, &now);
@@ -123,10 +128,9 @@ BOOL doCheck(char user[], unsigned char* key) {
 				long current_time = now.tv_sec * 1000000000 + now.tv_nsec;
 
 
-			if(current_time - start_time > 100000000) {
+			if(current_time - start_time > 1000000) {
 				printf("Debugger detected. Closing\n");
-				pid_t parent_id = getppid();
-				kill(parent_id, SIGKILL); 
+				//kill(parent_id, SIGTERM); 
 				_exit(0);
 			}
 
@@ -141,18 +145,19 @@ BOOL doCheck(char user[], unsigned char* key) {
 			WORD buffer = 0;
 			DWORD loop_size = 0;
 			
-			read(read_write_pipe[0], &loop_size, 2);
+			read(read_write_pipe[0], &loop_size, sizeof(loop_size));
 
 			for(int i = 0; i < loop_size; i++){
-				read(read_write_pipe[0], &buffer, 1);
+				read(read_write_pipe[0], &buffer, sizeof(buffer));
+				printf("recevied ", buffer);
 				buffer = buffer * 107;
-				write(read_write_pipe[1], &buffer, 1);
+				write(read_write_pipe[1], &buffer, sizeof(buffer));
 			}
 			SALT
 			for(int i = 0; i < 16; i++){
-				read(read_write_pipe[0], &buffer, 1);
+				read(read_write_pipe[0], &buffer, sizeof(buffer));
 				buffer = buffer * 137;
-				write(read_write_pipe[1], &buffer, 1);
+				write(read_write_pipe[1], &buffer, sizeof(buffer));
 				}
 			_exit(0);
 		}
@@ -185,7 +190,7 @@ BOOL doCheck(char user[], unsigned char* key) {
 	SALT
 	DWORD cbHash = sizeof(MD5Data);
 	SALT
-	write(read_write_pipe[1], &cbHash, 2);
+	write(read_write_pipe[1], &cbHash, sizeof(cbHash));
 	bResult = EVP_DigestFinal_ex(mdctx, MD5Data, NULL);
 	if (!bResult) {
 		EVP_MD_CTX_destroy(mdctx);
@@ -212,8 +217,9 @@ BOOL doCheck(char user[], unsigned char* key) {
 
 	for (int i = 0; i < cbHash; i++) {
 		checkMD5 += MD5Data[i] ^ chain_value;
-			write(read_write_pipe[1], &checkMD5, 1);
-			read(read_write_pipe[0], &pipe_buffer, 1);
+			write(read_write_pipe[1], &checkMD5, sizeof(checkMD5));
+			read(read_write_pipe[0], &pipe_buffer, sizeof(checkMD5));
+			printf("recevied ", pipe_buffer);
 			checkMD5 = pipe_buffer;
 
 		chain_value = MD5Data[i]; 
@@ -224,8 +230,8 @@ BOOL doCheck(char user[], unsigned char* key) {
 	for (int i = 0; i < 16; i++) {
 		checkKey += key[i] ^ chain_value;
 
-		write(read_write_pipe[1], &checkKey, 1);
-		read(read_write_pipe[0], &pipe_buffer, 1);
+		write(read_write_pipe[1], &checkKey, sizeof(checkKey));
+		read(read_write_pipe[0], &pipe_buffer, sizeof(checkKey));
 
 		checkKey = pipe_buffer;
 		chain_value = key[i];
