@@ -18,6 +18,15 @@ typedef uint32_t DWORD;
 #include <stdio.h>
 
 #define DEBUGLINE fprintf(stderr, "DBG: %d\n", __LINE__)
+#define SALT asm volatile("\
+				 .intel_syntax noprefix\n\
+				 mov rax, 2\n\
+				 cmp rax, 2\n\
+				 jmp .skip_junk\n\
+				 .byte 0x0f\n\
+				 .skip_junk:\n\
+				 .att_syntax prefix\n\
+				");
 
 BOOL doCheck(char user[], unsigned char* key);
 
@@ -51,6 +60,7 @@ BOOL doCheckConvert(char user[], char keychars[]) {
 }
 
 BOOL doCheck(char user[], unsigned char* key) {
+
 	EVP_MD_CTX* mdctx;
 
 	BOOL bResult = FALSE;
