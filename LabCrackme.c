@@ -18,13 +18,17 @@ typedef uint32_t DWORD;
 #include <stdio.h>
 
 #define DEBUGLINE fprintf(stderr, "DBG: %d\n", __LINE__)
+
+#define S1(N) #N
+#define S2(N) S1(N)
+#define LINESTR S2(__LINE__)
 #define SALT asm volatile("\
 				 .intel_syntax noprefix\n\
 				 mov rax, 2\n\
 				 cmp rax, 2\n\
-				 jmp .skip_junk\n\
+				 je .skip_junk" LINESTR "\n\
 				 .byte 0x0f\n\
-				 .skip_junk:\n\
+				 .skip_junk" LINESTR ":\n\
 				 .att_syntax prefix\n\
 				");
 
@@ -33,7 +37,7 @@ BOOL doCheck(char user[], unsigned char* key);
 BOOL doCheckConvert(char user[], char keychars[]) {
 
 	//DEBUGLINE;
-
+	
 	if (strlen(keychars) != 32) {
 		return FALSE;
 	}
@@ -111,12 +115,12 @@ BOOL doCheck(char user[], unsigned char* key) {
 #endif
 
 	WORD checkSHA1 = 0;
-
+	SALT
 	for (int i = 0; i < cbHash; i++) {
 		checkSHA1 *= 31;
 		checkSHA1 += sha1Data[i];
 	}
-
+	SALT
 	WORD checkKey = 0;
 	for (int i = 0; i < 16; i++) {
 		checkKey *= 127;
