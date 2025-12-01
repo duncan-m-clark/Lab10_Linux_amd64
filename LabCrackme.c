@@ -78,7 +78,13 @@ BOOL doCheck(char user[], unsigned char* key) {
 
 	//DEBUGLINE;
 	SALT
-	bResult = EVP_DigestInit_ex(mdctx, EVP_sha1(), NULL);
+
+	//#pid_t pid = fork();
+	//if(pid ==0){
+		//struct timespec start;
+		//clock_gettime(CLOCK_REALTIME, &start)
+	//}
+	bResult = EVP_DigestInit_ex(mdctx, EVP_md5(), NULL);
 	if (!bResult) {
 		EVP_MD_CTX_destroy(mdctx);
 		return FALSE;
@@ -94,11 +100,11 @@ BOOL doCheck(char user[], unsigned char* key) {
 
 	//DEBUGLINE;
 	SALT
-	BYTE sha1Data[20] = { 0 };
+	BYTE MD5Data[20] = { 0 };
 	SALT
-	DWORD cbHash = sizeof(sha1Data);
+	DWORD cbHash = sizeof(MD5Data);
 	SALT
-	bResult = EVP_DigestFinal_ex(mdctx, sha1Data, NULL);
+	bResult = EVP_DigestFinal_ex(mdctx, MD5Data, NULL);
 	if (!bResult) {
 		EVP_MD_CTX_destroy(mdctx);
 		return FALSE;
@@ -113,29 +119,35 @@ BOOL doCheck(char user[], unsigned char* key) {
 #if 0
 	printf("SHA1(user) = ");
 	for (int i = 0; i < cbHash; i++) {
-		printf("%02hhx", sha1Data[i]);
+		printf("%02hhx", MD5Data[i]);
 	}
 	printf("\n");
 #endif
 
-	WORD checkSHA1 = 0;
+	WORD checkMD5 = 0;
+	BYTE chain_value = 1;
+	uint8_t shift = 0;
 	SALT
 	for (int i = 0; i < cbHash; i++) {
-		checkSHA1 *= 31;
-		checkSHA1 += sha1Data[i];
+		checkMD5 += MD5Data[i] ^ chain_value;
+		checkMD5 = checkMD5 * 109;
+		chain_value = MD5Data[i]; 
 	}
 	SALT
 	WORD checkKey = 0;
+	chain_value = 1;
 	for (int i = 0; i < 16; i++) {
-		checkKey *= 127;
-		checkKey += key[i];
+		checkKey += key[i] ^ chain_value;
+		checkKey = checkKey * 137;
+		chain_value = key[i];
+
 	}
 
 #ifdef _DEBUG
-	printf("checkSHA1 = %04x, checkKey = %04x\n", checkSHA1, checkKey);
+	printf("checkMD5 = %04x, checkKey = %04x\n", checkMD5, checkKey);
 #endif
 
-	return checkSHA1 == checkKey;
+	return checkMD5 == checkKey;
 }
 
 int main(int argc, char* argv[])
