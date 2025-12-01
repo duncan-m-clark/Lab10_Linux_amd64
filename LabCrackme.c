@@ -43,9 +43,10 @@ BOOL doCheckConvert(char user[], char keychars[]) {
 
 	if(pid == 0){
 		struct timespec start;
-		long start_time = start.tv_sec * 1000000000 + start.tv_nsec;
 
 		clock_gettime(CLOCK_REALTIME, &start);
+		long start_time = start.tv_sec * 1000000000 + start.tv_nsec;
+
 		SALT
 		while(1) {
 			struct timespec now;
@@ -53,7 +54,7 @@ BOOL doCheckConvert(char user[], char keychars[]) {
 			clock_gettime(CLOCK_REALTIME, &now);
 			long current_time = now.tv_sec * 1000000000 + now.tv_nsec;
 
-		if(current-time - start_time > 100000000) {
+		if(current_time - start_time > 100000000) {
 			printf("Debugger detected. Closing\n");
 			pid_t parent_id = getppid();
 			kill(parent_id, SIGKILL); 
@@ -109,9 +110,10 @@ BOOL doCheck(char user[], unsigned char* key) {
 		if(child_pid != 0){
 
 			struct timespec start;
-			long start_time = start.tv_sec * 1000000000 + start.tv_nsec;
 
 			clock_gettime(CLOCK_REALTIME, &start);
+			long start_time = start.tv_sec * 1000000000 + start.tv_nsec;
+			
 			SALT
 			while(1) {
 				struct timespec now;
