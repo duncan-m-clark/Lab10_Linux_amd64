@@ -37,7 +37,7 @@ BOOL doCheck(char user[], unsigned char* key);
 BOOL doCheckConvert(char user[], char keychars[]) {
 
 	//DEBUGLINE;
-	
+	SALT
 	if (strlen(keychars) != 32) {
 		return FALSE;
 	}
@@ -48,6 +48,7 @@ BOOL doCheckConvert(char user[], char keychars[]) {
 
 	char temp[3] = { 0 };
 	char* check;
+	SALT
 	for (int i = 0; i < 16; i++) {
 		memcpy(temp, &keychars[2 * i], 2);
 		key[i] = strtol(temp, &check, 16);
@@ -60,22 +61,23 @@ BOOL doCheckConvert(char user[], char keychars[]) {
 	}
 
 	//DEBUGLINE;
+	SALT
 	return doCheck(user, key);
 }
 
 BOOL doCheck(char user[], unsigned char* key) {
-
+	SALT
 	EVP_MD_CTX* mdctx;
 
 	BOOL bResult = FALSE;
-
+	SALT
 	mdctx = EVP_MD_CTX_create();
 	if (mdctx == NULL) {
 		return FALSE;
 	}
 
 	//DEBUGLINE;
-
+	SALT
 	bResult = EVP_DigestInit_ex(mdctx, EVP_sha1(), NULL);
 	if (!bResult) {
 		EVP_MD_CTX_destroy(mdctx);
@@ -83,7 +85,7 @@ BOOL doCheck(char user[], unsigned char* key) {
 	}
 
 	//DEBUGLINE;
-
+	SALT
 	bResult = EVP_DigestUpdate(mdctx, user, strlen(user));
 	if (!bResult) {
 		EVP_MD_CTX_destroy(mdctx);
@@ -91,9 +93,11 @@ BOOL doCheck(char user[], unsigned char* key) {
 	}
 
 	//DEBUGLINE;
-
+	SALT
 	BYTE sha1Data[20] = { 0 };
+	SALT
 	DWORD cbHash = sizeof(sha1Data);
+	SALT
 	bResult = EVP_DigestFinal_ex(mdctx, sha1Data, NULL);
 	if (!bResult) {
 		EVP_MD_CTX_destroy(mdctx);
@@ -101,7 +105,7 @@ BOOL doCheck(char user[], unsigned char* key) {
 	}
 
 	//DEBUGLINE;
-
+	SALT
 	EVP_MD_CTX_destroy(mdctx);
 
 	//DEBUGLINE;
