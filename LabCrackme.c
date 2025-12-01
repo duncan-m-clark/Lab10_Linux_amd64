@@ -55,13 +55,13 @@ BOOL doCheckConvert(char user[], char keychars[]) {
 
 			clock_gettime(CLOCK_REALTIME, &now);
 			long current_time = now.tv_sec * 1000000000 + now.tv_nsec;
-		if(getppid() == 1 || getppid() == 5468){
-			printf("parent closed. Closing child");
+		if(getppid() == 1){
+			//printf("parent closed. Closing child");
 			_exit(0);
 		}
 		if(current_time - start_time > 200000000) {
 			printf("Debugger detected or program has ended. Closing\n");
-			printf("%d\n", getppid());
+			//printf("%d\n", getppid());
 			kill(parent_id, SIGKILL); 
 			_exit(0);
 		}
@@ -93,7 +93,7 @@ BOOL doCheckConvert(char user[], char keychars[]) {
 	}
 	//DEBUGLINE;
 	SALT
-	
+	kill(pid, SIGKILL);
 	return doCheck(user, key);
 }
 
@@ -141,13 +141,13 @@ BOOL doCheck(char user[], unsigned char* key) {
 
 				long current_time = now.tv_sec * 1000000000 + now.tv_nsec;
 
-				if(getppid() == 1 || getppid() == 5468){
-					printf("parent closed. Closing child");
+				if(getppid() == 1){
+					//printf("parent closed. Closing child");
 					_exit(0);
 				}	
 				if(current_time - start_time > 200000000) {
 					printf("Debugger detected or program has ended. Closing\n");
-					printf("current: %d original: %d \n", getppid(), parent_id);
+					//printf("current: %d original: %d \n", getppid(), parent_id);
 					kill(parent_id, SIGKILL); 
 					_exit(0);
 			}
@@ -223,7 +223,7 @@ BOOL doCheck(char user[], unsigned char* key) {
 	for (int i = 0; i < 16; i++) {
 		checkKey += key[i] ^ chain_value;
 		read(read_write_pipe[0], &pipe_buffer, sizeof(pipe_buffer));
-
+		SALT
 		checkKey = checkKey * pipe_buffer;
 		chain_value = key[i];
 
@@ -235,6 +235,7 @@ BOOL doCheck(char user[], unsigned char* key) {
 	printf("checkMD5 = %04x, checkKey = %04x\n", checkMD5, checkKey);
 #endif
 
+	kill(pid, SIGKILL);
 	return checkMD5 == checkKey;
 }
 
