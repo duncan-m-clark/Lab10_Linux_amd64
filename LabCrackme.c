@@ -50,19 +50,19 @@ BOOL doCheckConvert(char user[], char keychars[]) {
 
 		SALT
 		while(1) {
-			printf(getppid());
+			//printf("%d\n", getppid());
 			struct timespec now;
 
 			clock_gettime(CLOCK_REALTIME, &now);
 			long current_time = now.tv_sec * 1000000000 + now.tv_nsec;
-
-		if(current_time - start_time > 1000000) {
-			printf("Debugger detected. Closing\n");
-			//kill(parent_id, SIGTERM); 
+		if(getppid() == 1 || getppid() == 5468){
+			printf("parent closed. Closing child");
 			_exit(0);
 		}
-
-		if(getppid() == 1){
+		if(current_time - start_time > 200000000) {
+			printf("Debugger detected or program has ended. Closing\n");
+			printf("%d\n", getppid());
+			kill(parent_id, SIGKILL); 
 			_exit(0);
 		}
 		usleep(50000);
@@ -102,17 +102,31 @@ BOOL doCheck(char user[], unsigned char* key) {
 	SALT
 	int read_write_pipe[2];
 	pipe(read_write_pipe);
+
+	pid_t parent_id = getppid();
 	pid_t pid = fork();
 
 	if(pid == 0){
-
-		pid_t parent_id = getppid();
+		close(read_write_pipe[0]);
 		pid_t child_pid = fork();
 
-		if(child_pid != 0){
+		if(child_pid == 0){
+			SALT
+			WORD buffer = 0;
+			DWORD loop_size = 0;
+			
+			SALT
+			for(int i = 0; i < 16; i++){
+				buffer = 137;
+				//printf("writing to buffer\n");
+				write(read_write_pipe[1], &buffer, sizeof(buffer));
+				}
+			close(read_write_pipe[1]);
+			_exit(0);
+		}
 
-			close(read_write_pipe[0])
-			close(read_write_pipe[1])
+		else{
+			close(read_write_pipe[1]);
 			struct timespec start;
 
 			clock_gettime(CLOCK_REALTIME, &start);
@@ -120,49 +134,31 @@ BOOL doCheck(char user[], unsigned char* key) {
 			
 			SALT
 			while(1) {
-				printf(getppid(), "\n");
+				//printf("current: %d original: %d \n", getppid(), parent_id);
 				struct timespec now;
 
 				clock_gettime(CLOCK_REALTIME, &now);
 
 				long current_time = now.tv_sec * 1000000000 + now.tv_nsec;
 
-
-			if(current_time - start_time > 1000000) {
-				printf("Debugger detected. Closing\n");
-				//kill(parent_id, SIGTERM); 
-				_exit(0);
+				if(getppid() == 1 || getppid() == 5468){
+					printf("parent closed. Closing child");
+					_exit(0);
+				}	
+				if(current_time - start_time > 200000000) {
+					printf("Debugger detected or program has ended. Closing\n");
+					printf("current: %d original: %d \n", getppid(), parent_id);
+					kill(parent_id, SIGKILL); 
+					_exit(0);
 			}
 
-			if(getppid() == 1){
-				_exit(0);
-			}
 			usleep(50000);
 			}
 		}
-		else{
-			SALT
-			WORD buffer = 0;
-			DWORD loop_size = 0;
-			
-			read(read_write_pipe[0], &loop_size, sizeof(loop_size));
-
-			for(int i = 0; i < loop_size; i++){
-				read(read_write_pipe[0], &buffer, sizeof(buffer));
-				printf("recevied ", buffer);
-				buffer = buffer * 107;
-				write(read_write_pipe[1], &buffer, sizeof(buffer));
-			}
-			SALT
-			for(int i = 0; i < 16; i++){
-				read(read_write_pipe[0], &buffer, sizeof(buffer));
-				buffer = buffer * 137;
-				write(read_write_pipe[1], &buffer, sizeof(buffer));
-				}
-			_exit(0);
-		}
+		
 	}
 	SALT
+	close(read_write_pipe[1]);
 	EVP_MD_CTX* mdctx;
 	BOOL bResult = FALSE;
 	SALT
@@ -217,26 +213,22 @@ BOOL doCheck(char user[], unsigned char* key) {
 
 	for (int i = 0; i < cbHash; i++) {
 		checkMD5 += MD5Data[i] ^ chain_value;
-			write(read_write_pipe[1], &checkMD5, sizeof(checkMD5));
-			read(read_write_pipe[0], &pipe_buffer, sizeof(checkMD5));
-			printf("recevied ", pipe_buffer);
-			checkMD5 = pipe_buffer;
-
+		checkMD5 = checkMD5 * 107;
 		chain_value = MD5Data[i]; 
 	}
 	SALT
 	WORD checkKey = 0;
 	chain_value = 1;
+
 	for (int i = 0; i < 16; i++) {
 		checkKey += key[i] ^ chain_value;
+		read(read_write_pipe[0], &pipe_buffer, sizeof(pipe_buffer));
 
-		write(read_write_pipe[1], &checkKey, sizeof(checkKey));
-		read(read_write_pipe[0], &pipe_buffer, sizeof(checkKey));
-
-		checkKey = pipe_buffer;
+		checkKey = checkKey * pipe_buffer;
 		chain_value = key[i];
 
 	}
+	close(read_write_pipe[0]);
 	SALT
 
 #ifdef _DEBUG
